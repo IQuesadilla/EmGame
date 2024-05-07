@@ -64,13 +64,16 @@ fn RasterizeTriangle(a: Pos3, b: Pos3, c: Pos3, mvp: Mat4) void {
         }
     }
 
-    std.debug.print("{any} {any} {any}\n", .{ aPos, bPos, cPos });
+    //std.debug.print("{any}\n", .{aPos});
+    std.debug.print("VERTS: {any} {any} {any}\n", .{ aPos, bPos, cPos });
     if (u.x >= 0.0 and u.x <= 1.0 and u.y >= 0.0 and u.y <= 1.0 and u.z >= 0.0 and u.z <= 1.0)
-        PixelMap[@as(usize, @intFromFloat(@floor(u.x * 640.0)))][@as(usize, @intFromFloat(@floor(u.y * 480.0)))] = .{ .r = 1.0, .g = 0.0, .b = 0.0, .d = 0.0 };
+        PixelMap[@as(usize, @intFromFloat(@floor(u.x * 639.5)))][@as(usize, @intFromFloat(@floor(u.y * 479.5)))] = .{ .r = 1.0, .g = 0.0, .b = 0.0, .d = 0.0 };
     if (i.x >= 0.0 and i.x <= 1.0 and i.y >= 0.0 and i.y <= 1.0 and i.z >= 0.0 and i.z <= 1.0)
-        PixelMap[@as(usize, @intFromFloat(@floor(i.x * 640.0)))][@as(usize, @intFromFloat(@floor(i.y * 480.0)))] = .{ .r = 0.0, .g = 1.0, .b = 0.0, .d = 0.0 };
+        PixelMap[@as(usize, @intFromFloat(@floor(i.x * 639.5)))][@as(usize, @intFromFloat(@floor(i.y * 479.5)))] = .{ .r = 0.0, .g = 1.0, .b = 0.0, .d = 0.0 };
     if (l.x >= 0.0 and l.x <= 1.0 and l.y >= 0.0 and l.y <= 1.0 and l.z >= 0.0 and l.z <= 1.0)
-        PixelMap[@as(usize, @intFromFloat(@floor(l.x * 640.0)))][@as(usize, @intFromFloat(@floor(l.y * 480.0)))] = .{ .r = 0.0, .g = 0.0, .b = 1.0, .d = 0.0 };
+        PixelMap[@as(usize, @intFromFloat(@floor(l.x * 639.5)))][@as(usize, @intFromFloat(@floor(l.y * 479.5)))] = .{ .r = 0.0, .g = 0.0, .b = 1.0, .d = 0.0 };
+
+    PixelMap[1][1] = .{ .r = 1.0, .g = 1.0, .b = 1.0, .d = 0.0 };
 
     // !! Find longest edge (only matters in 2D)
     // Find direction to render in (direction of third vertex)
@@ -118,6 +121,15 @@ fn LookAt(eye: Pos3, look: Pos3, up: Pos3) Mat4 {
     return result;
 }
 
+fn Translate(m: Mat4, v: Pos3) Mat4 {
+    var r = m;
+    r[0][3] = m[0][0] * v.x + m[0][1] * v.y + m[0][2] * v.z + m[0][3];
+    r[1][3] = m[1][0] * v.x + m[1][1] * v.y + m[1][2] * v.z + m[1][3];
+    r[2][3] = m[2][0] * v.x + m[2][1] * v.y + m[2][2] * v.z + m[2][3];
+    r[3][3] = m[3][0] * v.x + m[3][1] * v.y + m[3][2] * v.z + m[3][3];
+    return r;
+}
+
 // Projection Matrix
 fn Perspective(fov: f32, aspect: f32, near: f32, far: f32) Mat4 {
     var m = Zeros;
@@ -125,8 +137,8 @@ fn Perspective(fov: f32, aspect: f32, near: f32, far: f32) Mat4 {
     m[0][0] = 1.0 / (aspect * range);
     m[1][1] = 1.0 / range;
     m[2][2] = (far) / (far - near);
-    m[2][3] = 1.0;
-    m[3][2] = -((far * near) / (far - near));
+    m[3][2] = 1.0;
+    m[2][3] = -((far * near) / (far - near));
     return m;
 }
 
@@ -233,12 +245,52 @@ pub fn main() !void {
 
     std.debug.print("BPP: {}\n", .{surface.*.format.*.BytesPerPixel});
 
+    const Speed: f32 = 0.05;
+    var xpos: f32 = 0.0;
+    var ypos: f32 = 0.0;
+    var zpos: f32 = 0.0;
+
     var id: usize = 0;
     var PerformLoop: bool = true;
     while (PerformLoop) {
         var e: sdl.SDL_Event = undefined;
         while (sdl.SDL_PollEvent(&e) != 0) {
-            if (e.type == sdl.SDL_QUIT) PerformLoop = false;
+            switch (e.type) {
+                sdl.SDL_QUIT => {
+                    PerformLoop = false;
+                },
+                sdl.SDL_KEYDOWN => {
+                    switch (e.key.keysym.sym) {
+                        sdl.SDLK_w => {
+                            //model[1][3] += Speed;
+                            zpos += Speed;
+                        },
+                        sdl.SDLK_s => {
+                            //model[1][3] -= Speed;
+                            zpos -= Speed;
+                        },
+                        sdl.SDLK_d => {
+                            //model[0][3] += Speed;
+                            xpos += Speed;
+                        },
+                        sdl.SDLK_a => {
+                            //model[0][3] -= Speed;
+                            xpos -= Speed;
+                        },
+                        sdl.SDLK_e => {
+                            //model[2][3] += Speed;
+                            ypos += Speed;
+                        },
+                        sdl.SDLK_q => {
+                            //model[2][3] -= Speed;
+                            ypos -= Speed;
+                        },
+                        else => {},
+                    }
+                },
+                else => {},
+                //model[0][3] += Speed;
+            }
         }
 
         Clear();
@@ -247,11 +299,13 @@ pub fn main() !void {
         var view: Mat4 = LookAt(.{ .x = 0, .y = 0, .z = 0 }, .{ .x = 0, .y = 0, .z = 1 }, .{ .x = 0, .y = 1, .z = 0 });
         var model: Mat4 = Identity;
 
-        //model[0][3] = @as(f32, @floatFromInt(id)) / 1000;
+        model = Translate(model, .{ .x = xpos, .y = ypos, .z = zpos });
+        std.debug.print("Model: {any}\nView: {any}\nProj: {any}\n", .{ model, view, proj });
 
-        var mvp = MatMult(proj, MatMult(view, model));
+        var mvp = MatMult(model, MatMult(view, proj));
+
         //std.debug.print("{any}\n", .{mvp});
-        RasterizeTriangle(.{ .x = @as(f32, @floatFromInt(id)) / 380.0, .y = 0.2, .z = 0.5 }, .{ .x = 0.2, .y = 0.5, .z = 0.5 }, .{ .x = 0.5, .y = 0.2, .z = 0.5 }, mvp);
+        RasterizeTriangle(.{ .x = 0.02, .y = 0.02, .z = 0.05 }, .{ .x = 0.02, .y = 0.05, .z = 0.05 }, .{ .x = 0.05, .y = 0.02, .z = 0.05 }, mvp);
 
         // for (270..370) |x| {
         //     for (id..id + 100) |y| {
@@ -266,6 +320,7 @@ pub fn main() !void {
         RenderSurface(surface);
 
         _ = sdl.SDL_UpdateWindowSurface(window);
+        std.time.sleep(16666666);
     }
 
     defer sdl.SDL_Quit();
