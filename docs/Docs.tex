@@ -1,0 +1,54 @@
+\documentclass[10pt]{article}
+\usepackage[margin=0.7in]{geometry}
+\usepackage{graphicx}
+
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+
+%\usepackage[pdftex]{hyperref} % Gives the ToC links in the PDF
+\usepackage{hyperref}
+
+\newcommand{\LoL}{\hyperref[sec:LoL]{League of Legends} }
+\newcommand{\RL}{\hyperref[sec:RL]{Rocket League} }
+\newcommand{\SSBU}{\hyperref[sec:SSBU]{Super Smash Bros. Ultimate} }
+\newcommand{\Mdn}{\hyperref[sec:Mdn]{Madden NFL 24} }
+\newcommand{\MK}{\hyperref[sec:MK]{Mario Kart 8} }
+\newcommand{\Spl}{\hyperref[sec:Spl]{Splatoon 3} }
+\newcommand{\NBA}{\hyperref[sec:NBA]{NBA 2K24} }
+\newcommand{\HS}{\hyperref[sec:HS]{Hearthstone} }
+
+\hypersetup{
+	pdfauthor={Isaac Quezada},
+	pdftitle={ECE338 3D Graphics Processor Design},
+	pdfsubject={3D Graphics Accelerator},
+	pdfkeywords={},
+	pdfproducer={},
+	pdfcreator={}
+}
+
+\title{3D Graphics Processor Design}
+\date{}
+
+\begin{document}
+	\maketitle
+	\tableofcontents
+	\pagebreak
+	\setlength{\parindent}{0cm}
+	
+	\section{Introduction}
+	
+	Following is the specification designed for a simple 3d-accelerator.
+	
+	\section{Requirements}
+	
+	The minimum requirements to build a playable 3d-accelerated game are:
+	\begin{itemize}
+		\item Accept a model-view-projection matrix.
+		\item Multiply the model-view-projection matrix with a column vector.
+	\end{itemize}
+	
+	\section{Interface}
+	
+	The processor interfaces with the 
+	
+\end{document}
