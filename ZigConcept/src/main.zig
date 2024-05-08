@@ -8,20 +8,30 @@ const Vec3 = struct { r: f32, g: f32, b: f32 };
 const Pos3 = struct { x: f32, y: f32, z: f32 };
 
 const Mat4 = [4][4]f32;
-// [col][row], col{row,row,row,row}
+// [row][col], row{col,col,col,col}
 const Identity = Mat4{ [4]f32{ 1, 0, 0, 0 }, [4]f32{ 0, 1, 0, 0 }, [4]f32{ 0, 0, 1, 0 }, [4]f32{ 0, 0, 0, 1 } };
 const Zeros = Mat4{ [4]f32{ 0, 0, 0, 0 }, [4]f32{ 0, 0, 0, 0 }, [4]f32{ 0, 0, 0, 0 }, [4]f32{ 0, 0, 0, 0 } };
 
 var PixelMap: [640][480]Pixel = undefined;
 
-fn RasterizeTriangle(a: Pos3, b: Pos3, c: Pos3, mvp: Mat4) void {
-    var aMat = [4]f32{ a.x, a.y, a.z, 1.0 };
-    var bMat = [4]f32{ b.x, b.y, b.z, 1.0 };
-    var cMat = [4]f32{ c.x, c.x, c.z, 1.0 };
+fn DrawPixel(a: Pos3, color: Vec3) void {
+    if (a.x > -1.0 and a.x < 1.0 and a.y > -1.0 and a.y < 1.0 and a.z >= 0.0 and a.z < 1.0) {
+        const x: usize = @as(usize, @intFromFloat(@floor(a.x * 640.0 / 2) + (640 / 2)));
+        const y: usize = @as(usize, @intFromFloat(@floor(a.y * 480.0 / 2) + (480 / 2)));
 
-    var aPos: Pos3 = DivideW(MatVecMult(mvp, aMat));
-    var bPos: Pos3 = DivideW(MatVecMult(mvp, bMat));
-    var cPos: Pos3 = DivideW(MatVecMult(mvp, cMat));
+        if (PixelMap[x][y].d > a.z)
+            PixelMap[x][y] = .{ .r = color.r, .g = color.g, .b = color.b, .d = a.z };
+    }
+}
+
+fn RasterizeTriangle(a: Pos3, b: Pos3, c: Pos3, mvp: Mat4) void {
+    const aMat = [4]f32{ a.x, a.y, a.z, 1.0 };
+    const bMat = [4]f32{ b.x, b.y, b.z, 1.0 };
+    const cMat = [4]f32{ c.x, c.x, c.z, 1.0 };
+
+    const aPos: Pos3 = DivideW(MatVecMult(mvp, aMat));
+    const bPos: Pos3 = DivideW(MatVecMult(mvp, bMat));
+    const cPos: Pos3 = DivideW(MatVecMult(mvp, cMat));
 
     //aPos = .{ .x = @fabs(aPos.x), .y = @fabs(aPos.y), .z = @fabs(aPos.z) };
     //aPos = Normalize(aPos);
@@ -64,19 +74,70 @@ fn RasterizeTriangle(a: Pos3, b: Pos3, c: Pos3, mvp: Mat4) void {
         }
     }
 
-    //std.debug.print("{any}\n", .{aPos});
-    std.debug.print("VERTS: {any} {any} {any}\n", .{ aPos, bPos, cPos });
-    if (u.x >= 0.0 and u.x <= 1.0 and u.y >= 0.0 and u.y <= 1.0 and u.z >= 0.0 and u.z <= 1.0)
-        PixelMap[@as(usize, @intFromFloat(@floor(u.x * 639.5)))][@as(usize, @intFromFloat(@floor(u.y * 479.5)))] = .{ .r = 1.0, .g = 0.0, .b = 0.0, .d = 0.0 };
-    if (i.x >= 0.0 and i.x <= 1.0 and i.y >= 0.0 and i.y <= 1.0 and i.z >= 0.0 and i.z <= 1.0)
-        PixelMap[@as(usize, @intFromFloat(@floor(i.x * 639.5)))][@as(usize, @intFromFloat(@floor(i.y * 479.5)))] = .{ .r = 0.0, .g = 1.0, .b = 0.0, .d = 0.0 };
-    if (l.x >= 0.0 and l.x <= 1.0 and l.y >= 0.0 and l.y <= 1.0 and l.z >= 0.0 and l.z <= 1.0)
-        PixelMap[@as(usize, @intFromFloat(@floor(l.x * 639.5)))][@as(usize, @intFromFloat(@floor(l.y * 479.5)))] = .{ .r = 0.0, .g = 0.0, .b = 1.0, .d = 0.0 };
+    std.debug.print("{any}\n", .{aPos});
+    //std.debug.print("VERTS: {any} {any} {any}\n", .{ aPos, bPos, cPos });
+    //if (u.x >= 0.0 and u.x <= 1.0 and u.y >= 0.0 and u.y <= 1.0 and u.z >= 0.0 and u.z <= 1.0)
+    //    PixelMap[@as(usize, @intFromFloat(@floor(u.x * 639.5)))][@as(usize, @intFromFloat(@floor(u.y * 479.5)))] = .{ .r = 1.0, .g = 0.0, .b = 0.0, .d = 0.0 };
+    //if (i.x >= 0.0 and i.x <= 1.0 and i.y >= 0.0 and i.y <= 1.0 and i.z >= 0.0 and i.z <= 1.0)
+    //    PixelMap[@as(usize, @intFromFloat(@floor(i.x * 639.5)))][@as(usize, @intFromFloat(@floor(i.y * 479.5)))] = .{ .r = 0.0, .g = 1.0, .b = 0.0, .d = 0.0 };
+    //if (l.x >= 0.0 and l.x <= 1.0 and l.y >= 0.0 and l.y <= 1.0 and l.z >= 0.0 and l.z <= 1.0)
+    //    PixelMap[@as(usize, @intFromFloat(@floor(l.x * 639.5)))][@as(usize, @intFromFloat(@floor(l.y * 479.5)))] = .{ .r = 0.0, .g = 0.0, .b = 1.0, .d = 0.0 };
 
-    PixelMap[1][1] = .{ .r = 1.0, .g = 1.0, .b = 1.0, .d = 0.0 };
+    PixelMap[1][5] = .{ .r = 1.0, .g = 1.0, .b = 1.0, .d = 0.0 };
 
-    // !! Find longest edge (only matters in 2D)
-    // Find direction to render in (direction of third vertex)
+    //const slope: Pos3 = .{ .x = u.x - l.x, .y = u.y - l.y, .z = 0.5 };
+
+    const epsilon: f32 = 0.0001;
+    var rise: f32 = u.y - l.y;
+    if (rise < epsilon and rise > -epsilon) rise = epsilon;
+    var run: f32 = u.x - l.x;
+    if (run < epsilon and run > -epsilon) run = epsilon;
+    const slope: f32 = rise / run;
+    const srun: f32 = run * 480;
+    const srise: f32 = rise * 640;
+    const sflen: f32 = (if (srise > srun) srise else srun);
+    if ((u.x < 1.0 and u.x > -1.0 and u.y < 1.0 and u.y > -1.0 and u.z < 1.0 and u.z >= 0) or (i.x < 1.0 and i.x >= 0.0 and i.y < 1.0 and i.y >= 0 and i.z < 1.0 and i.z >= 0) or (l.x < 1.0 and l.x >= 0.0 and l.y < 1.0 and l.y >= 0 and l.z < 1.0 and l.z >= 0)) {
+        const len: usize = @as(usize, @intFromFloat(@ceil(@abs(sflen))));
+        std.debug.print("Slope: {any}, Length: {any}, IT: {any}\n", .{ slope, len, rise / sflen });
+        for (0..len) |r| {
+            //var lineoffset: f32 = 0.0;
+            const fr: f32 = @as(f32, @floatFromInt(r));
+            const xoffset: f32 = fr * (run / sflen);
+            const yoffset: f32 = fr * (rise / sflen);
+
+            var lrise: f32 = i.y - l.y;
+            if (lrise < epsilon and lrise > -epsilon) lrise = epsilon;
+            var lrun: f32 = i.x - l.x;
+            if (lrun < epsilon and lrun > -epsilon) lrun = epsilon;
+            const lslope: f32 = lrise / lrun;
+            const lx: f32 = ((l.y + yoffset - i.y) / lslope) + i.x;
+
+            var urise: f32 = i.y - u.y;
+            if (urise < epsilon and urise > -epsilon) urise = epsilon;
+            var urun: f32 = i.x - u.x;
+            if (urun < epsilon and urun > -epsilon) urun = epsilon;
+            const uslope: f32 = urise / urun;
+            const ux: f32 = ((l.y + yoffset - i.y) / uslope) + i.x;
+
+            const ldiff: f32 = l.x + xoffset - lx;
+            const udiff: f32 = l.x + xoffset - ux;
+            const diff: f32 = if (@abs(ldiff) < @abs(udiff)) ldiff else udiff;
+
+            const fllen: f32 = @round(((diff)) * 640);
+            const llen: usize = @as(usize, @intFromFloat(@abs(fllen)));
+            for (0..llen) |d| {
+                const fd: f32 = @as(f32, @floatFromInt(d));
+                const dd: f32 = if (fllen < 0) fd else -fd;
+                DrawPixel(.{ .x = l.x + xoffset + (dd / 640.0), .y = l.y + yoffset, .z = l.z }, .{ .r = @as(f32, @floatFromInt(d)) / @as(f32, @floatFromInt(llen)), .g = @as(f32, @floatFromInt(r)) / @as(f32, @floatFromInt(len)), .b = 0.0 });
+            }
+
+            //DrawPixel(.{ .x = l.x + xoffset, .y = l.y + yoffset, .z = 0.5 }, .{ .r = 0.5, .g = 0.0, .b = 0.5 });
+        }
+    }
+
+    DrawPixel(u, .{ .r = 1.0, .g = 0.0, .b = 0.0 });
+    DrawPixel(i, .{ .r = 0.0, .g = 1.0, .b = 0.0 });
+    DrawPixel(l, .{ .r = 0.0, .g = 0.0, .b = 1.0 });
 }
 
 fn DivideW(v: [4]f32) Pos3 {
@@ -84,7 +145,7 @@ fn DivideW(v: [4]f32) Pos3 {
 }
 
 fn Normalize(vec: Pos3) Pos3 {
-    var d: f32 = @sqrt((vec.x * vec.x) + (vec.y * vec.y) + (vec.z * vec.z));
+    const d: f32 = @sqrt((vec.x * vec.x) + (vec.y * vec.y) + (vec.z * vec.z));
     return .{ .x = vec.x / d, .y = vec.y / d, .z = vec.z / d };
 }
 
@@ -98,12 +159,9 @@ fn DotProd(a: Pos3, b: Pos3) f32 {
 
 // View Matrix
 fn LookAt(eye: Pos3, look: Pos3, up: Pos3) Mat4 {
-    var n: Pos3 = .{ .x = look.x - eye.x, .y = look.y - eye.y, .z = look.z - eye.z };
-    var v: Pos3 = CrossProd(n, up);
-    var u: Pos3 = CrossProd(v, n);
-    //n = Normalize(n);
-    //v = Normalize(v);
-    //u = Normalize(u);
+    const n: Pos3 = Normalize(look); //.{ .x = look.x - eye.x, .y = look.y - eye.y, .z = look.z - eye.z });
+    const v: Pos3 = Normalize(CrossProd(up, n));
+    const u: Pos3 = CrossProd(v, n);
 
     var result: Mat4 = Identity;
     result[0][0] = v.x;
@@ -112,32 +170,35 @@ fn LookAt(eye: Pos3, look: Pos3, up: Pos3) Mat4 {
     result[0][1] = u.x;
     result[1][1] = u.y;
     result[2][1] = u.z;
-    result[0][2] = -n.x;
-    result[1][2] = -n.y;
-    result[2][2] = -n.z;
-    result[3][0] = -DotProd(eye, v);
-    result[3][1] = -DotProd(eye, u);
-    result[3][2] = DotProd(eye, n);
+    result[0][2] = n.x;
+    result[1][2] = n.y;
+    result[2][2] = n.z;
+    result[0][3] = -DotProd(eye, v);
+    result[1][3] = -DotProd(eye, u);
+    result[2][3] = -DotProd(eye, n);
     return result;
 }
 
 fn Translate(m: Mat4, v: Pos3) Mat4 {
     var r = m;
-    r[0][3] = m[0][0] * v.x + m[0][1] * v.y + m[0][2] * v.z + m[0][3];
-    r[1][3] = m[1][0] * v.x + m[1][1] * v.y + m[1][2] * v.z + m[1][3];
-    r[2][3] = m[2][0] * v.x + m[2][1] * v.y + m[2][2] * v.z + m[2][3];
-    r[3][3] = m[3][0] * v.x + m[3][1] * v.y + m[3][2] * v.z + m[3][3];
+    r[0][3] += v.x;
+    r[1][3] += v.y;
+    r[2][3] += v.z;
+    //r[0][3] = m[0][0] * v.x + m[1][0] * v.y + m[2][0] * v.z + m[3][0];
+    //r[1][3] = m[0][1] * v.x + m[1][1] * v.y + m[2][1] * v.z + m[3][1];
+    //r[2][3] = m[0][2] * v.x + m[1][2] * v.y + m[2][2] * v.z + m[3][2];
+    //r[3][3] = m[0][3] * v.x + m[1][3] * v.y + m[2][3] * v.z + m[3][3];
     return r;
 }
 
 // Projection Matrix
 fn Perspective(fov: f32, aspect: f32, near: f32, far: f32) Mat4 {
     var m = Zeros;
-    var range: f32 = @tan(std.math.degreesToRadians(f32, fov / 2.0));
+    const range: f32 = @tan(std.math.degreesToRadians(fov / 2.0));
     m[0][0] = 1.0 / (aspect * range);
     m[1][1] = 1.0 / range;
-    m[2][2] = (far) / (far - near);
-    m[3][2] = 1.0;
+    m[2][2] = -(far + near) / (far - near);
+    m[3][2] = -1.0;
     m[2][3] = -((far * near) / (far - near));
     return m;
 }
@@ -154,15 +215,15 @@ fn RenderSurface(s: *sdl.SDL_Surface) void {
 fn Clear() void {
     for (0..640) |x| {
         for (0..480) |y| {
-            PixelMap[x][y] = .{ .r = 0, .g = 0, .b = 0, .d = 0 };
+            PixelMap[x][y] = .{ .r = 0, .g = 0, .b = 0, .d = 1 };
         }
     }
 }
 
 fn SetPixel(s: *sdl.SDL_Surface, xpos: usize, ypos: usize, r: u8, g: u8, b: u8) void {
-    var bpp: isize = s.*.format.*.BytesPerPixel;
-    var x: c_int = @as(c_int, @intCast(xpos));
-    var y: c_int = @as(c_int, @intCast(ypos));
+    const bpp: isize = s.*.format.*.BytesPerPixel;
+    const x: c_int = @as(c_int, @intCast(xpos));
+    const y: c_int = @as(c_int, @intCast(ypos));
     //* Here p is the address to the pixel we want to set */
     var p: [*c]u8 = (@as([*c]u8, @ptrCast(@alignCast(s.*.pixels))) + @as(usize, @bitCast(@as(isize, @intCast(y * s.*.pitch))))) + @as(usize, @bitCast(@as(isize, @intCast(x * bpp))));
     const pixel = sdl.SDL_MapRGB(s.*.format, r, g, b);
@@ -238,21 +299,64 @@ fn MatVecMult(matrix: [4][4]f32, vector: [4]f32) [4]f32 {
 
 pub fn main() !void {
     _ = sdl.SDL_Init(sdl.SDL_INIT_VIDEO);
+    defer sdl.SDL_Quit();
 
-    var window: *sdl.SDL_Window = sdl.SDL_CreateWindow("mygpu", sdl.SDL_WINDOWPOS_UNDEFINED, sdl.SDL_WINDOWPOS_UNDEFINED, 640, 480, 0) orelse return;
+    const window: *sdl.SDL_Window = sdl.SDL_CreateWindow("mygpu", sdl.SDL_WINDOWPOS_UNDEFINED, sdl.SDL_WINDOWPOS_UNDEFINED, 640, 480, 0) orelse return;
     defer sdl.SDL_DestroyWindow(window);
-    var surface: *sdl.SDL_Surface = sdl.SDL_GetWindowSurface(window);
+    const surface: *sdl.SDL_Surface = sdl.SDL_GetWindowSurface(window);
 
     std.debug.print("BPP: {}\n", .{surface.*.format.*.BytesPerPixel});
 
-    const Speed: f32 = 0.05;
-    var xpos: f32 = 0.0;
-    var ypos: f32 = 0.0;
-    var zpos: f32 = 0.0;
+    const Speed: f32 = 0.02;
+    var CubePos: Pos3 = .{ .x = 0.0, .y = 0.0, .z = -0.2 };
+    var CameraDir: Pos3 = .{ .x = 0, .y = 0, .z = 1 };
+    var CameraLoc: Pos3 = .{ .x = 0, .y = 0, .z = 0 };
 
-    var id: usize = 0;
+    var CamUp: bool = false;
+    var CamDown: bool = false;
+    var CamLeft: bool = false;
+    var CamRight: bool = false;
+    var CamForward: bool = false;
+    var CamBackward: bool = false;
+
     var PerformLoop: bool = true;
     while (PerformLoop) {
+        Clear();
+
+        const proj: Mat4 = Perspective(90.0, 640.0 / 480.0, 0.1, 100.0);
+        const view: Mat4 = LookAt(CameraLoc, CameraDir, .{ .x = 0, .y = -1, .z = 0 });
+        var model: Mat4 = Identity;
+
+        model = Translate(model, CubePos);
+        std.debug.print("Model: {any}\nView: {any}\nProj: {any}\n", .{ model, view, proj });
+
+        const mvp = MatMult(proj, MatMult(view, model));
+
+        const lowerx: f32 = -0.02;
+        const lowery: f32 = -0.02;
+        const lowerz: f32 = -0.02;
+        const upperx: f32 = 0.02;
+        const uppery: f32 = 0.02;
+        const upperz: f32 = 0.02;
+
+        //std.debug.print("{any}\n", .{mvp});
+        RasterizeTriangle(.{ .x = lowerx, .y = uppery, .z = lowerz }, .{ .x = upperx, .y = lowery, .z = lowerz }, .{ .x = lowerx, .y = lowery, .z = lowerz }, mvp);
+        RasterizeTriangle(.{ .x = upperx, .y = lowery, .z = lowerz }, .{ .x = lowerx, .y = uppery, .z = lowerz }, .{ .x = upperx, .y = uppery, .z = lowerz }, mvp);
+        RasterizeTriangle(.{ .x = lowerx, .y = uppery, .z = upperz }, .{ .x = upperx, .y = lowery, .z = upperz }, .{ .x = lowerx, .y = lowery, .z = upperz }, mvp);
+        RasterizeTriangle(.{ .x = upperx, .y = lowery, .z = upperz }, .{ .x = lowerx, .y = uppery, .z = upperz }, .{ .x = upperx, .y = uppery, .z = upperz }, mvp);
+
+        RenderSurface(surface);
+
+        _ = sdl.SDL_UpdateWindowSurface(window);
+        std.time.sleep(16666666);
+
+        if (CamUp) CameraLoc.y -= Speed;
+        if (CamDown) CameraLoc.y += Speed;
+        if (CamLeft) CameraLoc.x += Speed;
+        if (CamRight) CameraLoc.x -= Speed;
+        if (CamForward) CameraLoc.z -= Speed;
+        if (CamBackward) CameraLoc.z += Speed;
+
         var e: sdl.SDL_Event = undefined;
         while (sdl.SDL_PollEvent(&e) != 0) {
             switch (e.type) {
@@ -262,28 +366,116 @@ pub fn main() !void {
                 sdl.SDL_KEYDOWN => {
                     switch (e.key.keysym.sym) {
                         sdl.SDLK_w => {
-                            //model[1][3] += Speed;
-                            zpos += Speed;
+                            CamForward = true;
                         },
                         sdl.SDLK_s => {
-                            //model[1][3] -= Speed;
-                            zpos -= Speed;
+                            CamBackward = true;
                         },
                         sdl.SDLK_d => {
-                            //model[0][3] += Speed;
-                            xpos += Speed;
+                            CamRight = true;
                         },
                         sdl.SDLK_a => {
-                            //model[0][3] -= Speed;
-                            xpos -= Speed;
+                            CamLeft = true;
                         },
                         sdl.SDLK_e => {
-                            //model[2][3] += Speed;
-                            ypos += Speed;
+                            CamUp = true;
                         },
                         sdl.SDLK_q => {
-                            //model[2][3] -= Speed;
-                            ypos -= Speed;
+                            CamDown = true;
+                        },
+                        sdl.SDLK_ESCAPE => {
+                            PerformLoop = false;
+                        },
+                        sdl.SDLK_UP => {
+                            CameraDir.y += Speed;
+                            CameraDir = Normalize(CameraDir);
+                        },
+                        sdl.SDLK_DOWN => {
+                            CameraDir.y -= Speed;
+                            CameraDir = Normalize(CameraDir);
+                        },
+                        sdl.SDLK_RIGHT => {
+                            CameraDir.x += Speed;
+                            CameraDir = Normalize(CameraDir);
+                        },
+                        sdl.SDLK_LEFT => {
+                            CameraDir.x -= Speed;
+                            CameraDir = Normalize(CameraDir);
+                        },
+                        sdl.SDLK_j => {
+                            CubePos.x -= Speed;
+                        },
+                        sdl.SDLK_l => {
+                            CubePos.x += Speed;
+                        },
+                        sdl.SDLK_i => {
+                            CubePos.z -= Speed;
+                        },
+                        sdl.SDLK_k => {
+                            CubePos.z += Speed;
+                        },
+                        sdl.SDLK_o => {
+                            CubePos.y += Speed;
+                        },
+                        sdl.SDLK_u => {
+                            CubePos.y -= Speed;
+                        },
+                        else => {},
+                    }
+                },
+                sdl.SDL_KEYUP => {
+                    switch (e.key.keysym.sym) {
+                        sdl.SDLK_w => {
+                            CamForward = false;
+                        },
+                        sdl.SDLK_s => {
+                            CamBackward = false;
+                        },
+                        sdl.SDLK_d => {
+                            CamRight = false;
+                        },
+                        sdl.SDLK_a => {
+                            CamLeft = false;
+                        },
+                        sdl.SDLK_e => {
+                            CamUp = false;
+                        },
+                        sdl.SDLK_q => {
+                            CamDown = false;
+                        },
+                        sdl.SDLK_UP => {
+                            CameraDir.y += Speed;
+                            CameraDir = Normalize(CameraDir);
+                        },
+                        sdl.SDLK_DOWN => {
+                            CameraDir.y -= Speed;
+                            CameraDir = Normalize(CameraDir);
+                        },
+                        sdl.SDLK_RIGHT => {
+                            CameraDir.x += Speed;
+                            CameraDir = Normalize(CameraDir);
+                        },
+                        sdl.SDLK_LEFT => {
+                            CameraDir.x -= Speed;
+                            CameraDir = Normalize(CameraDir);
+                        },
+                        sdl.SDLK_j => {
+                            CubePos.x -= Speed;
+                        },
+                        sdl.SDLK_l => {
+                            CubePos.x += Speed;
+                        },
+                        sdl.SDLK_i => {
+                            CubePos.z -= Speed;
+                        },
+                        sdl.SDLK_k => {
+                            CubePos.z += Speed;
+                        },
+                        sdl.SDLK_o => {
+                            CubePos.y += Speed;
+                        },
+                        sdl.SDLK_u => {
+                            CubePos.y -= Speed;
                         },
                         else => {},
                     }
@@ -292,45 +484,12 @@ pub fn main() !void {
                 //model[0][3] += Speed;
             }
         }
-
-        Clear();
-
-        var proj: Mat4 = Perspective(90.0, 640.0 / 480.0, 0.1, 100.0);
-        var view: Mat4 = LookAt(.{ .x = 0, .y = 0, .z = 0 }, .{ .x = 0, .y = 0, .z = 1 }, .{ .x = 0, .y = 1, .z = 0 });
-        var model: Mat4 = Identity;
-
-        model = Translate(model, .{ .x = xpos, .y = ypos, .z = zpos });
-        std.debug.print("Model: {any}\nView: {any}\nProj: {any}\n", .{ model, view, proj });
-
-        var mvp = MatMult(model, MatMult(view, proj));
-
-        //std.debug.print("{any}\n", .{mvp});
-        RasterizeTriangle(.{ .x = 0.02, .y = 0.02, .z = 0.05 }, .{ .x = 0.02, .y = 0.05, .z = 0.05 }, .{ .x = 0.05, .y = 0.02, .z = 0.05 }, mvp);
-
-        // for (270..370) |x| {
-        //     for (id..id + 100) |y| {
-        //         //PixelMap[x][y] = .{ .r = 1.0, .g = 0.0, .b = 1.0, .d = 0.0 };
-        //         //SetPixel(surface, 100 + x, 100 + y, 255, 0, 0);
-        //     }
-        // }
-        id += 1;
-        if (id == 380) id = 0;
-        //const outPos: [4]f32{};
-
-        RenderSurface(surface);
-
-        _ = sdl.SDL_UpdateWindowSurface(window);
-        std.time.sleep(16666666);
     }
-
-    defer sdl.SDL_Quit();
-    //var Model = Identity;
-    //_ = Model;
 }
 
 test "matrix multiplication" {
-    var a = Mat4{ [4]f32{ 1, 2, 3, 4 }, [4]f32{ 4, 1, 2, 3 }, [4]f32{ 3, 4, 1, 2 }, [4]f32{ 2, 3, 4, 1 } };
-    var result = MatMult(a, a);
+    const a = Mat4{ [4]f32{ 1, 2, 3, 4 }, [4]f32{ 4, 1, 2, 3 }, [4]f32{ 3, 4, 1, 2 }, [4]f32{ 2, 3, 4, 1 } };
+    const result = MatMult(a, a);
 
     const expected: [4][4]f32 = [4][4]f32{
         [4]f32{ 26, 28, 26, 20 },
@@ -370,14 +529,14 @@ test "matrix vector multiplication" {
 }
 
 test "projection matrix" {
-    var result = Perspective(90.0, 640.0 / 480.0, 0.1, 100.0);
+    const result = Perspective(90.0, 640.0 / 480.0, 0.1, 100.0);
     std.debug.print("Proj: {any}\n", .{result});
 }
 
 test "view matrix" {
-    var Position: Pos3 = .{ .x = 0, .y = 0, .z = 0 };
-    var Front: Pos3 = .{ .x = 0, .y = 0, .z = 1 };
-    var Up: Pos3 = .{ .x = 0, .y = 1, .z = 0 };
-    var View: Mat4 = LookAt(Position, Front, Up);
+    const Position: Pos3 = .{ .x = 0, .y = 0, .z = 0 };
+    const Front: Pos3 = .{ .x = 0, .y = 0, .z = 1 };
+    const Up: Pos3 = .{ .x = 0, .y = 1, .z = 0 };
+    const View: Mat4 = LookAt(Position, Front, Up);
     std.debug.print("View: {any}\n", .{View});
 }
