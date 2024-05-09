@@ -5,7 +5,10 @@ const sdl = @cImport({
 
 const Pixel = struct { r: f32, g: f32, b: f32, d: f32 };
 const Vec3 = struct { r: f32, g: f32, b: f32 };
+const Pos2 = struct { x: f32, y: f32 };
 const Pos3 = struct { x: f32, y: f32, z: f32 };
+const Data5 = struct { x: f32, y: f32, z: f32, u: f32, v: f32 };
+const Data6 = struct { x: f32, y: f32, z: f32, u: f32, v: f32, b: f32 };
 
 const Mat4 = [4][4]f32;
 // [row][col], row{col,col,col,col}
@@ -13,6 +16,8 @@ const Identity = Mat4{ [4]f32{ 1, 0, 0, 0 }, [4]f32{ 0, 1, 0, 0 }, [4]f32{ 0, 0,
 const Zeros = Mat4{ [4]f32{ 0, 0, 0, 0 }, [4]f32{ 0, 0, 0, 0 }, [4]f32{ 0, 0, 0, 0 }, [4]f32{ 0, 0, 0, 0 } };
 
 var PixelMap: [640][480]Pixel = undefined;
+
+var sampler: ?*sdl.SDL_Surface = null;
 
 fn DrawPixel(a: Pos3, color: Vec3) void {
     if (a.x > -1.0 and a.x < 1.0 and a.y > -1.0 and a.y < 1.0 and a.z >= 0.0 and a.z < 1.0) {
@@ -24,7 +29,7 @@ fn DrawPixel(a: Pos3, color: Vec3) void {
     }
 }
 
-fn RasterizeTriangle(a: Pos3, b: Pos3, c: Pos3, mvp: Mat4) void {
+fn RasterizeTriangle(a: Data5, b: Data5, c: Data5, mvp: Mat4) void {
     const aMat = [4]f32{ a.x, a.y, a.z, 1.0 };
     const bMat = [4]f32{ b.x, b.y, b.z, 1.0 };
     const cMat = [4]f32{ c.x, c.x, c.z, 1.0 };
@@ -33,6 +38,10 @@ fn RasterizeTriangle(a: Pos3, b: Pos3, c: Pos3, mvp: Mat4) void {
     const bPos: Pos3 = DivideW(MatVecMult(mvp, bMat));
     const cPos: Pos3 = DivideW(MatVecMult(mvp, cMat));
 
+    const aData: Data5 = .{ .x = aPos.x, .y = aPos.y, .z = aPos.z, .u = a.u, .v = a.v };
+    const bData: Data5 = .{ .x = bPos.x, .y = bPos.y, .z = bPos.z, .u = b.u, .v = b.v };
+    const cData: Data5 = .{ .x = cPos.x, .y = cPos.y, .z = cPos.z, .u = c.u, .v = c.v };
+
     //aPos = .{ .x = @fabs(aPos.x), .y = @fabs(aPos.y), .z = @fabs(aPos.z) };
     //aPos = Normalize(aPos);
     //bPos = .{ .x = @fabs(bPos.x), .y = @fabs(bPos.y), .z = @fabs(bPos.z) };
@@ -40,41 +49,41 @@ fn RasterizeTriangle(a: Pos3, b: Pos3, c: Pos3, mvp: Mat4) void {
     //cPos = .{ .x = @fabs(cPos.x), .y = @fabs(cPos.y), .z = @fabs(cPos.z) };
     //cPos = Normalize(cPos);
 
-    var u: Pos3 = undefined;
-    var i: Pos3 = undefined;
-    var l: Pos3 = undefined;
+    var u: Data5 = undefined;
+    var i: Data5 = undefined;
+    var l: Data5 = undefined;
 
-    if (aPos.y > bPos.y) {
-        if (bPos.y > cPos.y) {
-            u = aPos;
-            i = bPos;
-            l = cPos;
+    if (aData.y > bData.y) {
+        if (bData.y > cData.y) {
+            u = aData;
+            i = bData;
+            l = cData;
         } else if (aPos.y > cPos.y) {
-            u = aPos;
-            i = cPos;
-            l = bPos;
+            u = aData;
+            i = cData;
+            l = bData;
         } else { // cPos >>
-            u = cPos;
-            i = aPos;
-            l = bPos;
+            u = cData;
+            i = aData;
+            l = bData;
         }
     } else { // bPos > aPos
-        if (aPos.y > cPos.y) {
-            u = bPos;
-            i = aPos;
-            l = cPos;
-        } else if (bPos.y > cPos.y) {
-            u = bPos;
-            i = cPos;
-            l = aPos;
+        if (aData.y > cData.y) {
+            u = bData;
+            i = aData;
+            l = cData;
+        } else if (bData.y > cData.y) {
+            u = bData;
+            i = cData;
+            l = aData;
         } else { // cPos >>
-            u = cPos;
-            i = bPos;
-            l = aPos;
+            u = cData;
+            i = bData;
+            l = aData;
         }
     }
 
-    std.debug.print("{any}\n", .{aPos});
+    //std.debug.print("{any}\n", .{aPos});
     //std.debug.print("VERTS: {any} {any} {any}\n", .{ aPos, bPos, cPos });
     //if (u.x >= 0.0 and u.x <= 1.0 and u.y >= 0.0 and u.y <= 1.0 and u.z >= 0.0 and u.z <= 1.0)
     //    PixelMap[@as(usize, @intFromFloat(@floor(u.x * 639.5)))][@as(usize, @intFromFloat(@floor(u.y * 479.5)))] = .{ .r = 1.0, .g = 0.0, .b = 0.0, .d = 0.0 };
@@ -92,13 +101,13 @@ fn RasterizeTriangle(a: Pos3, b: Pos3, c: Pos3, mvp: Mat4) void {
     if (rise < epsilon and rise > -epsilon) rise = epsilon;
     var run: f32 = u.x - l.x;
     if (run < epsilon and run > -epsilon) run = epsilon;
-    const slope: f32 = rise / run;
+    //const slope: f32 = rise / run;
     const srun: f32 = run * 480;
     const srise: f32 = rise * 640;
     const sflen: f32 = (if (srise > srun) srise else srun);
-    if ((u.x < 1.0 and u.x > -1.0 and u.y < 1.0 and u.y > -1.0 and u.z < 1.0 and u.z >= 0) or (i.x < 1.0 and i.x >= 0.0 and i.y < 1.0 and i.y >= 0 and i.z < 1.0 and i.z >= 0) or (l.x < 1.0 and l.x >= 0.0 and l.y < 1.0 and l.y >= 0 and l.z < 1.0 and l.z >= 0)) {
+    if (true) { //(u.x < 1.0 and u.x > -1.0 and u.y < 1.0 and u.y > -1.0 and u.z < 1.0 and u.z > -1.0) or (i.x < 1.0 and i.x > -1.0 and i.y < 1.0 and i.y > -1.0 and i.z < 1.0 and i.z > -1.0) or ((l.x < 1.0 and l.x > -1.0) or (l.y < 1.0 and l.y > -1.0) or (l.z < 1.0 and l.z > -1.0))) {
         const len: usize = @as(usize, @intFromFloat(@ceil(@abs(sflen))));
-        std.debug.print("Slope: {any}, Length: {any}, IT: {any}\n", .{ slope, len, rise / sflen });
+        //std.debug.print("Slope: {any}, Length: {any}, IT: {any}\n", .{ slope, len, rise / sflen });
         for (0..len) |r| {
             //var lineoffset: f32 = 0.0;
             const fr: f32 = @as(f32, @floatFromInt(r));
@@ -123,21 +132,86 @@ fn RasterizeTriangle(a: Pos3, b: Pos3, c: Pos3, mvp: Mat4) void {
             const udiff: f32 = l.x + xoffset - ux;
             const diff: f32 = if (@abs(ldiff) < @abs(udiff)) ldiff else udiff;
 
-            const fllen: f32 = @round(((diff)) * 640);
+            const fllen: f32 = @floor(((diff)) * 640);
             const llen: usize = @as(usize, @intFromFloat(@abs(fllen)));
+            //std.debug.print("-----\n", .{});
             for (0..llen) |d| {
                 const fd: f32 = @as(f32, @floatFromInt(d));
                 const dd: f32 = if (fllen < 0) fd else -fd;
-                DrawPixel(.{ .x = l.x + xoffset + (dd / 640.0), .y = l.y + yoffset, .z = l.z }, .{ .r = @as(f32, @floatFromInt(d)) / @as(f32, @floatFromInt(llen)), .g = @as(f32, @floatFromInt(r)) / @as(f32, @floatFromInt(len)), .b = 0.0 });
+
+                const vpercent: f32 = @as(f32, @floatFromInt(r)) / @as(f32, @floatFromInt(len));
+                _ = vpercent;
+                const hpercent: f32 = @as(f32, @floatFromInt(d)) / @as(f32, @floatFromInt(llen));
+                _ = hpercent;
+                //const otherper: f32 = @abs(diff / (l.x + xoffset - i.x));
+
+                const hlpercent: f32 = @abs(yoffset / (i.y - l.y));
+                const hupercent: f32 = (1 - @abs(((l.y + yoffset) - i.y) / (u.y - i.y)));
+
+                const hl: f32 = if (hlpercent <= 1.0 and hlpercent >= 0.0) hlpercent else if (hlpercent < 0.0) 0.0 else 1.0;
+                _ = hl;
+                const hu: f32 = if (hupercent <= 1.0 and hupercent >= 0.0) hupercent else if (hupercent < 0.0) 0.0 else 1.0;
+                _ = hu;
+
+                //if (hlpercent < 1.0) std.debug.print("What!\n", .{});
+
+                //const uval: f32 = (i.u * hl * hu * hpercent) + ((1 - vpercent) * (1 - hl) * l.u) + (vpercent * (1 - hu) * u.u);
+                //const vval: f32 = (i.v * hl * hu * hpercent) + ((1 - vpercent) * (1 - hl) * l.v) + (vpercent * (1 - hu) * u.v);
+                //const bval: f32 = (i.b * hl * hu * hpercent) + ((1 - vpercent) * (1 - hl) * l.b) + (vpercent * (1 - hu) * u.b);
+
+                const outPos: Pos3 = .{ .x = l.x + xoffset + (dd / 640), .y = l.y + yoffset, .z = l.z };
+
+                // Just use distances for now.
+                const lvec: Pos2 = .{ .x = outPos.x - l.x, .y = outPos.y - l.y };
+                const ivec: Pos2 = .{ .x = outPos.x - i.x, .y = outPos.y - i.y };
+                const uvec: Pos2 = .{ .x = outPos.x - u.x, .y = outPos.y - u.y };
+                const ldis: f32 = @sqrt((lvec.x * lvec.x) + (lvec.y * lvec.y));
+                const idis: f32 = @sqrt((ivec.x * ivec.x) + (ivec.y * ivec.y));
+                const udis: f32 = @sqrt((uvec.x * uvec.x) + (uvec.y * uvec.y));
+                const uval: f32 = (ldis * l.u) + (idis * i.u) + (udis * u.u);
+                const vval: f32 = (ldis * l.v) + (idis * i.v) + (udis * u.v);
+                //const bval: f32 = (ldis * l.b) + (idis * i.b) + (udis * u.b);
+                const dColor: f32 = @sqrt((uval * uval) + (vval * vval));
+
+                var outColor: Vec3 = undefined;
+                if (sampler) |s| {
+                    const sxpos: usize = @as(usize, @intFromFloat(@floor(@as(f32, @floatFromInt(s.*.w)) * (uval / dColor))));
+                    const sypos: usize = @as(usize, @intFromFloat(@floor(@as(f32, @floatFromInt(s.*.h)) * (vval / dColor))));
+                    const bpp: isize = s.*.format.*.BytesPerPixel;
+                    //* Here p is the address to the pixel we want to set */
+                    const p: [*c]u32 = (@as([*c]u32, @ptrCast(@alignCast(s.*.pixels))) + @as(usize, @bitCast(@as(isize, @intCast(@as(c_int, @intCast(sypos)) * s.*.pitch))))) + @as(usize, @bitCast(@as(isize, @intCast(@as(c_int, @intCast(sxpos)) * bpp))));
+                    const pixel = p.*; //@as(u32, @bitCast(@as(c_uint, @truncate(@as([*c]u32, @ptrCast(@alignCast(p))).*)))); //@as(u32, @bitCast(@as(c_uint, @truncate(pixel))))
+
+                    var outR: u8 = 0;
+                    var outG: u8 = 0;
+                    var outB: u8 = 0;
+                    sdl.SDL_GetRGB(pixel, s.*.format, &outR, &outG, &outB);
+
+                    outColor = .{ .r = (@as(f32, @floatFromInt(outR)) / 255.0), .g = (@as(f32, @floatFromInt(outG)) / 255.0), .b = (@as(f32, @floatFromInt(outB)) / 255.0) };
+
+                    //outColor = .{ .r = (uval / dColor), .g = (vval / dColor), .b = 0.0 };
+                } else {
+                    outColor = .{ .r = (uval / dColor), .g = (vval / dColor), .b = 0.0 };
+                }
+
+                //const outColor: Vec3 = Normalize(.{.r = uval, .g = vval, .b = bval});
+                //std.debug.print("UVAL: {}, HL: {}, HU: {}\n", .{ uval, hl, hu });
+
+                //if (uval > 1 or uval < 0) std.debug.print("ERROR!!\n", .{});
+
+                //const uval: f32 = (hpercent * i.u) + (((vpercent * u.u) + ((1 - vpercent) * l.u)) * (1 - hpercent));
+                //const vval: f32 = (hpercent * i.v) + (((vpercent * u.v) + ((1 - vpercent) * l.v)) * (1 - hpercent));
+
+                DrawPixel(outPos, outColor);
             }
 
             //DrawPixel(.{ .x = l.x + xoffset, .y = l.y + yoffset, .z = 0.5 }, .{ .r = 0.5, .g = 0.0, .b = 0.5 });
         }
     }
 
-    DrawPixel(u, .{ .r = 1.0, .g = 0.0, .b = 0.0 });
-    DrawPixel(i, .{ .r = 0.0, .g = 1.0, .b = 0.0 });
-    DrawPixel(l, .{ .r = 0.0, .g = 0.0, .b = 1.0 });
+    //DrawPixel(.{ .x = u.x, .y = u.y, .z = 0.0 }, .{ .r = 1.0, .g = 0.0, .b = 0.0 });
+    //DrawPixel(.{ .x = i.x, .y = i.y, .z = 0.0 }, .{ .r = 0.0, .g = 1.0, .b = 0.0 });
+    //DrawPixel(.{ .x = l.x, .y = l.y, .z = 0.0 }, .{ .r = 0.0, .g = 0.0, .b = 1.0 });
 }
 
 fn DivideW(v: [4]f32) Pos3 {
@@ -305,6 +379,8 @@ pub fn main() !void {
     defer sdl.SDL_DestroyWindow(window);
     const surface: *sdl.SDL_Surface = sdl.SDL_GetWindowSurface(window);
 
+    sampler = sdl.SDL_LoadBMP("sample.bmp");
+
     std.debug.print("BPP: {}\n", .{surface.*.format.*.BytesPerPixel});
 
     const Speed: f32 = 0.02;
@@ -328,7 +404,7 @@ pub fn main() !void {
         var model: Mat4 = Identity;
 
         model = Translate(model, CubePos);
-        std.debug.print("Model: {any}\nView: {any}\nProj: {any}\n", .{ model, view, proj });
+        //std.debug.print("Model: {any}\nView: {any}\nProj: {any}\n", .{ model, view, proj });
 
         const mvp = MatMult(proj, MatMult(view, model));
 
@@ -338,12 +414,13 @@ pub fn main() !void {
         const upperx: f32 = 0.02;
         const uppery: f32 = 0.02;
         const upperz: f32 = 0.02;
+        _ = upperz;
 
         //std.debug.print("{any}\n", .{mvp});
-        RasterizeTriangle(.{ .x = lowerx, .y = uppery, .z = lowerz }, .{ .x = upperx, .y = lowery, .z = lowerz }, .{ .x = lowerx, .y = lowery, .z = lowerz }, mvp);
-        RasterizeTriangle(.{ .x = upperx, .y = lowery, .z = lowerz }, .{ .x = lowerx, .y = uppery, .z = lowerz }, .{ .x = upperx, .y = uppery, .z = lowerz }, mvp);
-        RasterizeTriangle(.{ .x = lowerx, .y = uppery, .z = upperz }, .{ .x = upperx, .y = lowery, .z = upperz }, .{ .x = lowerx, .y = lowery, .z = upperz }, mvp);
-        RasterizeTriangle(.{ .x = upperx, .y = lowery, .z = upperz }, .{ .x = lowerx, .y = uppery, .z = upperz }, .{ .x = upperx, .y = uppery, .z = upperz }, mvp);
+        RasterizeTriangle(.{ .x = lowerx, .y = uppery, .z = lowerz, .u = 0.0, .v = 1.0 }, .{ .x = upperx, .y = lowery, .z = lowerz, .u = 1.0, .v = 0.0 }, .{ .x = lowerx, .y = lowery, .z = lowerz, .u = 0.0, .v = 0.0 }, mvp);
+        RasterizeTriangle(.{ .x = upperx, .y = lowery, .z = lowerz, .u = 1.0, .v = 0.0 }, .{ .x = lowerx, .y = uppery, .z = lowerz, .u = 0.0, .v = 1.0 }, .{ .x = upperx, .y = uppery, .z = lowerz, .u = 1.0, .v = 1.0 }, mvp);
+        //RasterizeTriangle(.{ .x = lowerx, .y = uppery, .z = upperz }, .{ .x = upperx, .y = lowery, .z = upperz }, .{ .x = lowerx, .y = lowery, .z = upperz }, mvp);
+        //RasterizeTriangle(.{ .x = upperx, .y = lowery, .z = upperz }, .{ .x = lowerx, .y = uppery, .z = upperz }, .{ .x = upperx, .y = uppery, .z = upperz }, mvp);
 
         RenderSurface(surface);
 
