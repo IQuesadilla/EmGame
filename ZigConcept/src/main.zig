@@ -180,6 +180,9 @@ fn RasterizeTriangle(a: Data5, b: Data5, c: Data5, mvp: Mat4) void {
                     const bpp: isize = s.*.format.*.BytesPerPixel;
                     //* Here p is the address to the pixel we want to set */
                     const p: [*c]u32 = (@as([*c]u32, @ptrCast(@alignCast(s.*.pixels))) + @as(usize, @bitCast(@as(isize, @intCast(@as(c_int, @intCast(sypos)) * s.*.pitch))))) + @as(usize, @bitCast(@as(isize, @intCast(@as(c_int, @intCast(sxpos)) * bpp))));
+                    //if (p == null) {
+                    //std.debug.print("P: {any}\n", .{p});
+                    //}
                     const pixel = p.*; //@as(u32, @bitCast(@as(c_uint, @truncate(@as([*c]u32, @ptrCast(@alignCast(p))).*)))); //@as(u32, @bitCast(@as(c_uint, @truncate(pixel))))
 
                     var outR: u8 = 0;
@@ -379,7 +382,8 @@ pub fn main() !void {
     defer sdl.SDL_DestroyWindow(window);
     const surface: *sdl.SDL_Surface = sdl.SDL_GetWindowSurface(window);
 
-    sampler = sdl.SDL_LoadBMP("sample.bmp");
+    sampler = null;
+    //sampler = sdl.SDL_LoadBMP("sample.bmp");
 
     std.debug.print("BPP: {}\n", .{surface.*.format.*.BytesPerPixel});
 
